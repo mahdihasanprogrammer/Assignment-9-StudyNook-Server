@@ -35,7 +35,11 @@ async function run() {
     const roomsCollection = database.collection('rooms');
 
 
-
+    // get AvailableStudyRoom;
+    app.get('/available-rooms', async(req,res) =>{
+      const availableRooms = await roomsCollection.find().toArray();
+      res.send(availableRooms)
+    })
 
 
     // Send a ping to confirm a successful connection
