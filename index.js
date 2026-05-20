@@ -37,8 +37,15 @@ async function run() {
 
     // get AvailableStudyRoom;
     app.get('/available-rooms', async(req,res) =>{
-      const availableRooms = await roomsCollection.find().toArray();
+      const availableRooms = await roomsCollection.find().limit(6).toArray();
       res.send(availableRooms)
+    })
+
+
+    // get all-rooms data;
+    app.get('/all-rooms', async(req, res) =>{
+      const allRooms = await roomsCollection.find().toArray();
+      res.send(allRooms)
     })
 
 
