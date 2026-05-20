@@ -54,7 +54,16 @@ async function run() {
       const roomData = req.body;
       const insertRoomData = await roomsCollection.insertOne(roomData);
       res.send(insertRoomData)
-      console.log(insertRoomData)
+    })
+
+
+    // get my-listings data throw get api ;
+    app.get('/my-listings/:userId', async(req, res) =>{
+      const {userId} = req.params;
+      const queryByUserId = {userId};
+      const myListingData = await roomsCollection.find(queryByUserId).toArray();
+      res.send(myListingData);
+      console.log('listing data', myListingData)
     })
 
     // Send a ping to confirm a successful connection
