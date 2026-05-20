@@ -49,6 +49,14 @@ async function run() {
     })
 
 
+    // add room, api;
+    app.post('/add-room', async(req, res) =>{
+      const roomData = req.body;
+      const insertRoomData = await roomsCollection.insertOne(roomData);
+      res.send(insertRoomData)
+      console.log(insertRoomData)
+    })
+
     // Send a ping to confirm a successful connection
     await client.db("StudyNook").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
