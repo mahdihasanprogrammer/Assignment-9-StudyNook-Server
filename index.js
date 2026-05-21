@@ -5,7 +5,7 @@ dns.setServers(["8.8.8.8", "8.8.4.4"]);
 const dotenv = require('dotenv');
 dotenv.config();
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = process.env.MONGODB_URI
 
 const express = require('express')
@@ -64,6 +64,14 @@ async function run() {
       const myListingData = await roomsCollection.find(queryByUserId).toArray();
       res.send(myListingData);
       console.log('listing data', myListingData)
+    })
+
+
+    // get single room details ;
+    app.get('/all-rooms/:id', async(req, res) =>{
+      const {id} = req.params;
+      const roomDetails = await roomsCollection.findOne({_id:new ObjectId(id)});
+      res.send(roomDetails)
     })
 
     // Send a ping to confirm a successful connection
