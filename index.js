@@ -74,6 +74,28 @@ async function run() {
       res.send(roomDetails)
     })
 
+
+    // delete room by id;
+    app.delete('/all-rooms/:id', async(req, res) =>{
+      const {id} = req.params;
+      const {email} = req.query;
+
+      const query = {_id: new ObjectId(id)};
+      const room = await roomsCollection.findOne(query);
+
+      if(!room){
+         return res.status(404).send({ message: "Room not found" });
+      }
+
+      if(room.userEmail != email){
+        return res.status(403).send({ message: "Forbidden" });
+      }
+      
+      const deleteData = await roomsCollection.deleteOne(query);
+      res.send(deleteData);
+      console.log('delete', deleteData)
+    })
+
     // Send a ping to confirm a successful connection
     await client.db("StudyNook").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
