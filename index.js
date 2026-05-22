@@ -11,6 +11,7 @@ const uri = process.env.MONGODB_URI
 const express = require('express')
 const app = express()
 const cors = require('cors');
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 app.use(cors())
 app.use(express.json());
 const port = process.env.PORT || 6500
@@ -25,6 +26,39 @@ const client = new MongoClient(uri, {
   }
 });
 
+// middleware;
+
+const verifyToken = async (req, res, next)=>{
+  const authHeader = req?.headers.authorization;
+
+  if(!authHeader){
+    return res.status(401).json({message:'Unauthorized'})
+  }
+
+  const token = authHeader.split(' ')[1];
+  console.log(token, 'token')
+  if(!token){
+    return res.status(401).json({message:'Unauthorized'})
+  }
+
+  
+  try{
+      const JWKS = createRemoteJWKSet(
+        new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
+      )
+
+      const {payload} = await jwtVerify(token, JWKS);
+      req.user= payload;
+      next()
+     
+  }
+
+  catch(error){
+    console.error('Token validation failed:', error)
+    throw error
+  }
+  
+}
 
 async function run() {
   try {
@@ -63,7 +97,7 @@ async function run() {
       const queryByUserId = {userId};
       const myListingData = await roomsCollection.find(queryByUserId).toArray();
       res.send(myListingData);
-      console.log('listing data', myListingData)
+  
     })
 
 
@@ -76,10 +110,10 @@ async function run() {
 
 
     // delete room by id;
-    app.delete('/all-rooms/:id', async(req, res) =>{
-      const {id} = req.params;
-      const {email} = req.query;
+    app.delete('/all-rooms/:id',verifyToken, async(req, res) =>{
 
+      const {id} = req.params;
+      
       const query = {_id: new ObjectId(id)};
       const room = await roomsCollection.findOne(query);
 
@@ -87,27 +121,31 @@ async function run() {
          return res.status(404).send({ message: "Room not found" });
       }
 
-      if(room.userEmail != email){
+      if(room.userEmail != req.user.email){
         return res.status(403).send({ message: "Forbidden" });
       }
       
       const deleteData = await roomsCollection.deleteOne(query);
       res.send(deleteData);
-      console.log('delete', deleteData)
+    
     })
 
 
       // patch data;
-        app.patch('/all-rooms/:id', async (req, res) => {
+        app.patch('/all-rooms/:id',verifyToken, async (req, res) => {
             const id = req.params.id;
             const modifiedRoom = req.body;
-            console.log('modify', modifiedRoom)
+          
 
              const query = { _id: new ObjectId(id)};
              const room = await roomsCollection.findOne(query);
+             
 
              if(!room){
                 return res.status(404).send({message:'data not found'})
+             }
+             if(room.userEmail !== req.user.email){
+              return res.status(401).json({message:'Unauthorized'})
              }
 
             const updateData = await roomsCollection.updateOne(query, { $set: modifiedRoom });
