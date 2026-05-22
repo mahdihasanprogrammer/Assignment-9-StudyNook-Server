@@ -96,6 +96,25 @@ async function run() {
       console.log('delete', deleteData)
     })
 
+
+      // patch data;
+        app.patch('/all-rooms/:id', async (req, res) => {
+            const id = req.params.id;
+            const modifiedRoom = req.body;
+            console.log('modify', modifiedRoom)
+
+             const query = { _id: new ObjectId(id)};
+             const room = await roomsCollection.findOne(query);
+
+             if(!room){
+                return res.status(404).send({message:'data not found'})
+             }
+
+            const updateData = await roomsCollection.updateOne(query, { $set: modifiedRoom });
+            res.send(updateData);
+        })
+
+
     // Send a ping to confirm a successful connection
     await client.db("StudyNook").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
