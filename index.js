@@ -72,7 +72,7 @@ async function run() {
 
     // get AvailableStudyRoom;
     app.get('/available-rooms', async (req, res) => {
-      const availableRooms = await roomsCollection.find().limit(6).toArray();
+      const availableRooms = await roomsCollection.find().limit(6).sort({ _id: -1 }).toArray();
       res.send(availableRooms)
     })
 
@@ -87,10 +87,10 @@ async function run() {
     // add room, api;
     app.post('/add-room', verifyToken, async (req, res) => {
       const roomData = req.body;
-     
+
 
       if (roomData.userId !== req.user.id) {
-        return res.status(401).json({message:"Unauthorized"})
+        return res.status(401).json({ message: "Unauthorized" })
       }
       const insertRoomData = await roomsCollection.insertOne(roomData);
       res.send(insertRoomData)
@@ -102,11 +102,11 @@ async function run() {
       const { userId } = req.params;
 
       if (userId !== req.user.id) {
-        return res.status(401).json({message:"Unauthorized"})
+        return res.status(401).json({ message: "Unauthorized" })
       }
-      const myListingData = await roomsCollection.find({ userId }).toArray();
+      const myListingData = await roomsCollection.find({ userId }).sort({ _id: -1 }).toArray();
       res.json(myListingData);
-      
+
 
     })
 
@@ -161,36 +161,89 @@ async function run() {
     })
 
 
-    // Booking room;
-    app.post('/booking-room', verifyToken, async(req, res) =>{
+    //add booking room;
+    app.post('/booking-room', verifyToken, async (req, res) => {
       const bookingRoom = req.body;
-      console.log(bookingRoom, 'backend')
-      
+
+
       const conflictBooking = await bookingsCollection.findOne({
         roomId: bookingRoom.roomId,
         date: bookingRoom.date,
-        startTime :{
+        status:{$ne: "Cancelled"},
+        startTime: {
           $lt: bookingRoom.endTime
         },
 
-        endTime:{
-          $gt:bookingRoom.startTime
+        endTime: {
+          $gt: bookingRoom.startTime
         }
       })
 
-      if(conflictBooking){
-      return  res.status(409).send({message:"Time slot already booked!"})
+      if (conflictBooking) {
+        return res.status(409).send({ message: "Time slot already booked!" })
       }
 
       const bookingData = await bookingsCollection.insertOne(bookingRoom);
-      res.send({response:'ok', message:"booking room successful"})
-      
-      // if(bookingRoom.userId != req.user.id){
-      //   return res.status(401).json({message:"Unauthorized"})
-      // }
+      if (bookingData.insertedId) {
+        await roomsCollection.updateOne(
+
+          { _id: new ObjectId(bookingRoom.roomId) },
+          {
+            $inc: { bookingCount: 1 }
+          }
+        )
+      }
+      res.send({ response: 'ok', message: "booking room successful" })
 
 
+    })
 
+    // get my-bookings room ;
+    app.get('/my-bookings', verifyToken, async (req, res) => {
+      const userId = req.user.id;
+
+
+      const myBookingsData = await bookingsCollection
+        .find({ userID: userId }).sort({ _id: -1 }).toArray();
+
+      if (!myBookingsData) {
+        return res.status(404).json({ message: 'no booking room found' })
+      }
+      res.send(myBookingsData)
+    })
+
+
+    // cancel room booking;
+    app.patch('/my-bookings/:bookingId', verifyToken, async (req, res) => {
+
+      const { bookingId } = req.params;
+
+      const findData = await bookingsCollection.findOne(
+        { _id: new ObjectId(bookingId) });
+
+      if (!findData) {
+        return res.status(404).json({ message: "no data found" })
+      }
+
+      if (req.user.email != findData.userEmail) {
+        return res.status(401).json({ message: "Unauthorized" })
+      }
+
+
+      const setStatusCancelled = await bookingsCollection.updateOne(
+         { _id: new ObjectId(bookingId) },
+        { $set: { status: "Cancelled" } },
+      );
+
+      if (setStatusCancelled.modifiedCount > 0) {
+        await roomsCollection.updateOne(
+          { roomId: findData.roomId },
+          { $inc: { bookingCount: -1 } }
+        )
+
+      }
+
+      res.send(cancelData)
     })
 
     // Send a ping to confirm a successful connection
