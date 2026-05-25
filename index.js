@@ -79,7 +79,21 @@ async function run() {
 
     // get all-rooms data;
     app.get('/all-rooms', async (req, res) => {
-      const allRooms = await roomsCollection.find().toArray();
+      const { search, amenity } = req.query;
+      console.log('test query',search, amenity,req.query)
+      const query = {};
+     
+
+      if(search){
+        query.roomName={$regex:search, $options:"i"}
+      }
+
+      else if (amenity) {
+        query.amenities =  { $in: [amenity] }
+
+      }
+  
+      const allRooms = await roomsCollection.find(query).toArray();
       res.send(allRooms)
     })
 
@@ -169,7 +183,7 @@ async function run() {
       const conflictBooking = await bookingsCollection.findOne({
         roomId: bookingRoom.roomId,
         date: bookingRoom.date,
-        status:{$ne: "Cancelled"},
+        status: { $ne: "Cancelled" },
         startTime: {
           $lt: bookingRoom.endTime
         },
@@ -231,7 +245,7 @@ async function run() {
 
 
       const setStatusCancelled = await bookingsCollection.updateOne(
-         { _id: new ObjectId(bookingId) },
+        { _id: new ObjectId(bookingId) },
         { $set: { status: "Cancelled" } },
       );
 
